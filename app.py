@@ -157,7 +157,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA (HOVER & CLICK BEDA)
+    # 5. PEMBUATAN PETA (HOVER = DETAIL, CLICK = SIMPLE)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -167,17 +167,17 @@ if df is not None:
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
         warna_zona = colors.get(kota, '#95a5a6')
         
-        # --- 1. HTML UNTUK HOVER (TOOLTIP) - SEDERHANA ---
-        html_hover = f"""
-        <div style="font-family:sans-serif; font-size:12px;">
+        # --- A. UNTUK POPUP (KLIK) -> TAMPILAN SEDERHANA ---
+        html_simple = f"""
+        <div style='font-family:Arial; width:150px;'>
             <b>{kota.upper()}</b><br>
-            Status: {risk_info.get('lbl')}<br>
-            <span style="color:#666; font-size:10px;">(Klik untuk Detail)</span>
+            <span style='font-size:10px;'>{risk_info.get('lbl')}</span><br>
+            Total: {tot:,.0f}
         </div>
         """
 
-        # --- 2. HTML UNTUK KLIK (POPUP) - DETAIL CARD ---
-        html_popup = f"""
+        # --- B. UNTUK TOOLTIP (HOVER) -> TAMPILAN DETAIL (CARD) ---
+        html_detail = f"""
         <div style="
             font-family: 'Segoe UI', sans-serif;
             width: 200px; 
@@ -214,9 +214,9 @@ if df is not None:
         
         feature['properties']['fillColor'] = warna_zona
         
-        # SIMPAN DUA KONTEN BERBEDA KE PROPERTI GEOJSON
-        feature['properties']['tooltip_content'] = html_hover # Untuk Hover
-        feature['properties']['popup_content'] = html_popup   # Untuk Klik
+        # SIMPAN KONTEN KE PROPERTI GEOJSON
+        feature['properties']['isi_popup'] = html_simple     # Klik
+        feature['properties']['isi_tooltip'] = html_detail   # Hover
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
@@ -229,14 +229,15 @@ if df is not None:
     m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
-    # --- RENDER PETA DENGAN DUA INTERAKSI ---
+    # --- RENDER PETA ---
     folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        # 1. Tooltip (Hover) -> Pakai konten sederhana
-        tooltip=folium.GeoJsonTooltip(fields=['tooltip_content'], labels=False),
-        # 2. Popup (Klik) -> Pakai konten detail
-        popup=folium.GeoJsonPopup(fields=['popup_content'], labels=False) 
+        # LOGIKA DITUKAR DI SINI:
+        # Hover (Tooltip) -> Ambil konten detail
+        tooltip=folium.GeoJsonTooltip(fields=['isi_tooltip'], labels=False),
+        # Klik (Popup) -> Ambil konten simple
+        popup=folium.GeoJsonPopup(fields=['isi_popup'], labels=False) 
     ).add_to(m)
 
     # ==========================================
