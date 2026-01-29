@@ -296,4 +296,37 @@ if df is not None:
                     {html_top5}
                 </div>
                 <div style="flex: 1; min-width: 250px;">
-                    <div style="background-color: #fff8e1; border
+                    <div style="background-color: #fff8e1; border-left: 5px solid #f1c40f; padding: 15px; border-radius: 4px;">
+                        <b style="color:#d35400; display:block; margin-bottom:10px;">💡 REKOMENDASI KEBIJAKAN</b>
+                        <div style="font-size: 13px; line-height: 1.5; color:#333;">{html_rekomendasi}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+    # ==========================================
+    # 7. TAMPILAN LAYOUT (FULL WIDTH)
+    # ==========================================
+    
+    st.title("Peta Persebaran Risiko HIV Jawa Barat")
+    
+    # Legend
+    st.markdown('''
+    <div style="font-family:sans-serif; font-size:14px; margin-bottom: 5px; font-weight:bold;">
+        ZONA RISIKO (AI) &nbsp;&nbsp;&nbsp;
+        <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
+        <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
+        <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Peta Full Width
+    st_folium(m, width="100%", height=550)
+    
+    # Laporan
+    st.markdown(final_html, unsafe_allow_html=True)
+
+else:
+    st.warning("Data belum dimuat.")
