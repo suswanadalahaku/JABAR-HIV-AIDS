@@ -8,11 +8,11 @@ from sklearn.cluster import KMeans
 from streamlit_folium import st_folium
 
 # ==========================================
-# 1. KONFIGURASI HALAMAN (UBAH KE WIDE)
+# 1. KONFIGURASI HALAMAN (WIDE)
 # ==========================================
 st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar")
 
-# CSS HACK: Mengurangi padding bawaan Streamlit agar benar-benar full
+# CSS HACK: Mengurangi padding agar full screen
 st.markdown("""
 <style>
     .block-container {
@@ -54,7 +54,7 @@ def load_data():
 df, geo_data_raw = load_data()
 
 # ==========================================
-# 3. FUNGSI LOGIKA
+# 3. FUNGSI LOGIKA (AI & STATUS)
 # ==========================================
 def get_ai_clusters(df_input):
     if df_input.empty: return {}, {}, {} 
@@ -108,10 +108,9 @@ def calculate_province_status(df_filtered, city_scores):
 
 def get_policy_advice(zona_label, data_usia, filter_gender):
     advice = []
-    
     if zona_label == 'ZONA MERAH':
-        advice.append("<b>🚨 DARURAT PROVINSI:</b> Eskalasi kasus tinggi. Gubernur perlu menginstruksikan penambahan anggaran darurat HIV dan audit stok obat ARV di seluruh RSUD.")
-        advice.append("<b>🏥 FASKES:</b> Wajibkan skrining HIV bagi seluruh pasien rawat inap dengan gejala oportunistik di RS Rujukan.")
+        advice.append("<b>🚨 DARURAT PROVINSI:</b> Eskalasi kasus tinggi. Gubernur perlu menginstruksikan penambahan anggaran darurat HIV dan audit stok obat ARV.")
+        advice.append("<b>🏥 FASKES:</b> Wajibkan skrining HIV bagi seluruh pasien rawat inap dengan gejala oportunistik.")
     elif zona_label == 'ZONA KUNING':
         advice.append("<b>⚠️ PERINGATAN DINI:</b> Tren kasus meningkat. Perkuat peran Dinkes Provinsi untuk supervisi daerah dengan kasus tinggi.")
         advice.append("<b>📢 KAMPANYE:</b> Gencarkan sosialisasi masif melalui media sosial dan tokoh masyarakat tingkat provinsi.")
@@ -131,7 +130,7 @@ def get_policy_advice(zona_label, data_usia, filter_gender):
     return advice
 
 # ==========================================
-# 4. SIDEBAR & PROSES UTAMA
+# 4. SIDEBAR & PROSES FILTER
 # ==========================================
 if df is not None:
     st.sidebar.header("🎛️ Filter Data")
@@ -159,7 +158,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA (TOOLTIP STYLE MODERN)
+    # 5. PEMBUATAN PETA (FIXED POPUP/CLICK)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -167,35 +166,32 @@ if df is not None:
         kota = feature['properties']['name'].title()
         tot = df_grp.get(kota, 0)
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
-        
-        # Ambil warna zona untuk header tooltip
         warna_zona = colors.get(kota, '#95a5a6')
         
-        # -----------------------------------------------------------
-        # STYLE BARU: Tooltip "Card" Style
-        # -----------------------------------------------------------
-        html_tooltip = f"""
+        # --- HTML UNTUK POPUP ---
+        html_popup = f"""
         <div style="
             font-family: 'Segoe UI', sans-serif;
-            min-width: 160px;
+            width: 200px; 
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             overflow: hidden;
             border: 1px solid #f0f0f0;
+            margin-bottom: 5px;
         ">
             <div style="
                 background-color: {warna_zona};
                 color: white;
-                padding: 8px 12px;
-                font-size: 13px;
+                padding: 10px 12px;
+                font-size: 14px;
                 font-weight: bold;
                 letter-spacing: 0.5px;
             ">
                 {kota.upper()}
             </div>
-            <div style="padding: 10px 12px; color: #444; font-size: 12px;">
-                <div style="margin-bottom:4px;">
+            <div style="padding: 12px 12px; color: #444; font-size: 13px;">
+                <div style="margin-bottom:6px;">
                     Status: <b>{risk_info.get('lbl')}</b>
                 </div>
                 <div>
@@ -204,16 +200,14 @@ if df is not None:
             </div>
         </div>
         """
-        # -----------------------------------------------------------
-
-        # Simpan HTML cantik tadi ke dalam properti 'tooltip_custom'
+        
         feature['properties']['fillColor'] = warna_zona
-        feature['properties']['tooltip_custom'] = html_tooltip
+        # GANTI NAMA PROPERTI MENJADI 'popup_content'
+        feature['properties']['popup_content'] = html_popup
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
         base = feature['properties']['fillColor']
-        # Highlight border jika kota dipilih di filter
         if kt != 'SEMUA KAB/KOTA' and kota_name.upper() == kt.upper():
             return {'fillColor': base, 'color': 'cyan', 'weight': 4, 'fillOpacity': 0.9, 'opacity': 1}
         return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
@@ -222,14 +216,13 @@ if df is not None:
     m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
-    # RENDER PETA
-    # Perhatikan: kita menggunakan field 'tooltip_custom' yang berisi HTML tadi
+    # --- PERBAIKAN DI SINI (GANTI TOOLTIP JADI POPUP) ---
     folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        tooltip=folium.GeoJsonTooltip(fields=['tooltip_custom'], labels=False) 
+        # Gunakan GeoJsonPopup untuk aksi KLIK
+        popup=folium.GeoJsonPopup(fields=['popup_content'], labels=False) 
     ).add_to(m)
-
 
     # ==========================================
     # 6. HTML LAPORAN
@@ -303,37 +296,4 @@ if df is not None:
                     {html_top5}
                 </div>
                 <div style="flex: 1; min-width: 250px;">
-                    <div style="background-color: #fff8e1; border-left: 5px solid #f1c40f; padding: 15px; border-radius: 4px;">
-                        <b style="color:#d35400; display:block; margin-bottom:10px;">💡 REKOMENDASI KEBIJAKAN</b>
-                        <div style="font-size: 13px; line-height: 1.5; color:#333;">{html_rekomendasi}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    """
-
-    # ==========================================
-    # 7. TAMPILKAN LAYOUT (FULL WIDTH)
-    # ==========================================
-    
-    st.title("Peta Persebaran Risiko HIV Jawa Barat")
-    
-    # Legend
-    st.markdown('''
-    <div style="font-family:sans-serif; font-size:14px; margin-bottom: 5px; font-weight:bold;">
-        ZONA RISIKO (AI) &nbsp;&nbsp;&nbsp;
-        <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
-        <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
-        <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
-    </div>
-    ''', unsafe_allow_html=True)
-    
-    # Peta Full Width
-    st_folium(m, width="100%", height=550)
-    
-    # Laporan
-    st.markdown(final_html, unsafe_allow_html=True)
-
-else:
-    st.warning("Data belum dimuat.")
+                    <div style="background-color: #fff8e1; border
