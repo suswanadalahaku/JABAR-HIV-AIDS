@@ -141,7 +141,7 @@ if df is not None:
     jk = st.sidebar.selectbox("👥 Gender:", opt_jk)
     
     opt_kt = ['SEMUA KAB/KOTA'] + sorted(df['nama_kabupaten_kota'].unique())
-    kt = st.sidebar.selectbox("📍 Highlight:", opt_kt)
+    kt = st.sidebar.selectbox("📍 Kabupaten/Kota:", opt_kt)
 
     # --- FILTER DATA ---
     df_f = df.copy()
