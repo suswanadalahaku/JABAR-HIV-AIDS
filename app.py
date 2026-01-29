@@ -8,10 +8,11 @@ from sklearn.cluster import KMeans
 from streamlit_folium import st_folium
 
 # ==========================================
-# 1. KONFIGURASI HALAMAN
+# 1. KONFIGURASI HALAMAN (TETAP WIDE / FULL)
 # ==========================================
-st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar") # Layout centered agar laporan dibawah peta enak dibaca
+st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar")
 
+# CSS: Mengurangi padding agar benar-benar full screen
 st.markdown("""
 <style>
     .block-container {
@@ -53,7 +54,7 @@ def load_data():
 df, geo_data_raw = load_data()
 
 # ==========================================
-# 3. FUNGSI LOGIKA (TIDAK BERUBAH)
+# 3. FUNGSI LOGIKA (AI & STATUS)
 # ==========================================
 def get_ai_clusters(df_input):
     if df_input.empty: return {}, {}, {} 
@@ -130,7 +131,7 @@ def get_policy_advice(zona_label, data_usia, filter_gender):
     return advice
 
 # ==========================================
-# 4. SIDEBAR & PROSES UTAMA
+# 4. SIDEBAR & PROSES FILTER
 # ==========================================
 if df is not None:
     st.sidebar.header("🎛️ Filter Data")
@@ -158,7 +159,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA
+    # 5. PEMBUATAN PETA (LOGIKA TOOLTIP DIPERBARUI)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -166,26 +167,20 @@ if df is not None:
         kota = feature['properties']['name'].title()
         tot = df_grp.get(kota, 0)
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
-        r = df_det.loc[kota] if kota in df_det.index else pd.Series({'Anak-anak':0, 'Remaja':0, 'Dewasa':0, 'Lansia':0})
         
-        # HTML Tabel untuk POPUP (Klik) - Tetap
-        tbl_popup = f"""
-        <table style="width:100%; font-size:10px; border-collapse: collapse;">
-            <tr><td style="border-bottom:1px solid #ddd;">Anak</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Anak-anak']}</b></td></tr>
-            <tr><td style="border-bottom:1px solid #ddd;">Remaja</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Remaja']}</b></td></tr>
-            <tr><td style="border-bottom:1px solid #ddd;">Dewasa</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Dewasa']}</b></td></tr>
-            <tr><td>Lansia</td><td style="text-align:right;"><b>{r['Lansia']}</b></td></tr>
-        </table>"""
+        # --- [BAGIAN INI DIGANTI SESUAI REQUEST] ---
+        # Membuat Popup HTML yang simpel dan bersih seperti kode referensi
+        popup_html = f"""
+        <div style='font-family:Arial; width:150px;'>
+            <b>{kota.upper()}</b><br>
+            <span style='font-size:10px;'>{risk_info.get('lbl')}</span><br>
+            Total: {tot:,.0f}
+        </div>
+        """
         
         feature['properties']['fillColor'] = colors.get(kota, '#95a5a6')
-        
-        # Data untuk TOOLTIP (Hover)
-        feature['properties']['info_filter'] = f"{th} | {jk}"
-        feature['properties']['total_display'] = f"{tot:,.0f}"
-        feature['properties']['risk_display'] = f"{risk_info.get('lbl')}" # Disingkat agar rapi
-        
-        # Content HTML untuk POPUP (Klik)
-        feature['properties']['popup_content'] = f"<div style='width:160px'><b>{kota.upper()}</b><br>{risk_info.get('lbl')}<br>Total: {tot}<hr>{tbl_popup}</div>"
+        feature['properties']['popup'] = popup_html
+        # -------------------------------------------
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
@@ -195,39 +190,19 @@ if df is not None:
         return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
 
     sw, ne = [-8.0, 106.0], [-5.5, 109.0]
-    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=8, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
+    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
-    # --- UPDATE TOOLTIP STYLE (LEBIH RAPI) ---
-    # Menggunakan CSS yang lebih lengkap untuk box-shadow dan border bersih
-    tooltip = folium.GeoJsonTooltip(
-        fields=['name', 'risk_display', 'total_display'], 
-        aliases=['Wilayah:', 'Status:', 'Total:'], 
-        style="""
-            background-color: white; 
-            color: #333; 
-            font-family: sans-serif; 
-            font-size: 12px;
-            padding: 10px; 
-            border: 1px solid #ccc; 
-            border-radius: 5px; 
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-        """
-    )
-    
+    # --- [UPDATE LOGIKA GEOJSON] ---
+    # Menggunakan fields=['popup'] agar HTML di atas dirender saat diklik
     gj = folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        tooltip=tooltip
+        popup=folium.GeoJsonPopup(fields=['popup'], labels=False) 
     ).add_to(m)
     
-    for feature, element in zip(geo_current['features'], gj.data['features']):
-        content = feature['properties']['popup_content']
-        folium.Popup(content, max_width=250).add_to(gj)
-
-
     # ==========================================
-    # 6. HTML LAPORAN (ISI TETAP SAMA)
+    # 6. HTML LAPORAN (LAYOUT TETAP FULL WIDTH DI BAWAH PETA)
     # ==========================================
     if kt == 'SEMUA KAB/KOTA':
         judul_lap = "JAWA BARAT (PROVINSI)"
@@ -274,7 +249,7 @@ if df is not None:
         html_top5 = f"<div style='margin-top:20px; border:1px solid #ddd; padding:10px; border-radius:5px;'><b style='color:#555;'>🏆 5 WILAYAH TERTINGGI</b><table style='width:100%; font-size:12px; margin-top:5px; border-collapse:collapse; color:#333;'>{rows}</table></div>"
 
     final_html = f"""
-    <div style="font-family: Arial, sans-serif; color:#333; background-color:white; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px;">
+    <div style="font-family: Arial, sans-serif; color:#333; background-color:white; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10px;">
         <div style="background-color: {warna_header}; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -309,14 +284,14 @@ if df is not None:
     """
 
     # ==========================================
-    # 7. TAMPILKAN KE LAYAR (URUTAN BARU)
+    # 7. TAMPILAN LAYOUT (FULL WIDTH)
     # ==========================================
     
     st.title("Peta Persebaran Risiko HIV Jawa Barat")
     
-    # 1. LEGEND DI ATAS PETA
+    # Legend
     st.markdown('''
-    <div style="font-family:sans-serif; font-size:14px; margin-bottom: 10px; font-weight:bold;">
+    <div style="font-family:sans-serif; font-size:14px; margin-bottom: 5px; font-weight:bold;">
         ZONA RISIKO (AI) &nbsp;&nbsp;&nbsp;
         <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
         <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
@@ -324,10 +299,10 @@ if df is not None:
     </div>
     ''', unsafe_allow_html=True)
     
-    # 2. PETA (FULL WIDTH)
-    st_folium(m, width="100%", height=500)
+    # Peta Full Width
+    st_folium(m, width="100%", height=550)
     
-    # 3. LAPORAN WILAYAH DI BAWAH PETA
+    # Laporan
     st.markdown(final_html, unsafe_allow_html=True)
 
 else:
