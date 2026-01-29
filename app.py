@@ -12,7 +12,6 @@ from streamlit_folium import st_folium
 # ==========================================
 st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar")
 
-# CSS HACK: Mengurangi padding agar full screen
 st.markdown("""
 <style>
     .block-container {
@@ -158,7 +157,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA (FIXED POPUP/CLICK)
+    # 5. PEMBUATAN PETA (HOVER & CLICK BEDA)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -168,7 +167,16 @@ if df is not None:
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
         warna_zona = colors.get(kota, '#95a5a6')
         
-        # --- HTML UNTUK POPUP ---
+        # --- 1. HTML UNTUK HOVER (TOOLTIP) - SEDERHANA ---
+        html_hover = f"""
+        <div style="font-family:sans-serif; font-size:12px;">
+            <b>{kota.upper()}</b><br>
+            Status: {risk_info.get('lbl')}<br>
+            <span style="color:#666; font-size:10px;">(Klik untuk Detail)</span>
+        </div>
+        """
+
+        # --- 2. HTML UNTUK KLIK (POPUP) - DETAIL CARD ---
         html_popup = f"""
         <div style="
             font-family: 'Segoe UI', sans-serif;
@@ -197,13 +205,18 @@ if df is not None:
                 <div>
                     Total Kasus: <b>{tot:,.0f}</b>
                 </div>
+                <div style="margin-top:8px; font-size:11px; color:#888;">
+                    {risk_info.get('desc')}
+                </div>
             </div>
         </div>
         """
         
         feature['properties']['fillColor'] = warna_zona
-        # GANTI NAMA PROPERTI MENJADI 'popup_content'
-        feature['properties']['popup_content'] = html_popup
+        
+        # SIMPAN DUA KONTEN BERBEDA KE PROPERTI GEOJSON
+        feature['properties']['tooltip_content'] = html_hover # Untuk Hover
+        feature['properties']['popup_content'] = html_popup   # Untuk Klik
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
@@ -216,11 +229,13 @@ if df is not None:
     m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
-    # --- PERBAIKAN DI SINI (GANTI TOOLTIP JADI POPUP) ---
+    # --- RENDER PETA DENGAN DUA INTERAKSI ---
     folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        # Gunakan GeoJsonPopup untuk aksi KLIK
+        # 1. Tooltip (Hover) -> Pakai konten sederhana
+        tooltip=folium.GeoJsonTooltip(fields=['tooltip_content'], labels=False),
+        # 2. Popup (Klik) -> Pakai konten detail
         popup=folium.GeoJsonPopup(fields=['popup_content'], labels=False) 
     ).add_to(m)
 
@@ -246,7 +261,8 @@ if df is not None:
 
     rekomendasi = get_policy_advice(zona_stats.get('lbl'), det_val, jk)
     html_rekomendasi = "<ul style='margin:0; padding-left:20px;'>"
-    for rec in rekomendasi: html_rekomendasi += f"<li style='margin-bottom:8px;'>{rec}</li>"
+    for rec in rekomendasi: 
+        html_rekomendasi += f"<li style='margin-bottom:8px;'>{rec}</li>"
     html_rekomendasi += "</ul>"
 
     html_table = f"""
