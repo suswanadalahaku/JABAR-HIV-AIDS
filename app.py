@@ -42,7 +42,7 @@ def load_data():
 df, geo_data_raw = load_data()
 
 # ==========================================
-# 3. FUNGSI LOGIKA (AI & STATUS)
+# 3. FUNGSI LOGIKA (COPY-PASTE DARI KODE ANDA)
 # ==========================================
 def get_ai_clusters(df_input):
     if df_input.empty: return {}, {}, {} 
@@ -56,12 +56,14 @@ def get_ai_clusters(df_input):
     df_p['cluster'] = km.fit_predict(X)
     df_p['total'] = df_p.sum(axis=1)
 
+    # Sorting Cluster (0=Rendah, 1=Sedang, 2=Tinggi)
     rank = df_p.groupby('cluster')['total'].mean().sort_values().index
     
+    # [UPDATE] PERUBAHAN LABEL ZONA HIJAU (SESUAI REQUEST)
     cmap = {
         rank[0]: {'c':'#2ecc71', 'lbl':'ZONA HIJAU', 'desc':'Risiko Rendah', 'score': 1},
-        rank[1]: {'c':'#f1c40f', 'lbl':'ZONA KUNING', 'desc':'Waspada', 'score': 2},
-        rank[2]: {'c':'#e74c3c', 'lbl':'ZONA MERAH', 'desc':'Bahaya', 'score': 3}
+        rank[1]: {'c':'#f1c40f', 'lbl':'ZONA KUNING', 'desc':'Waspada / Sedang', 'score': 2},
+        rank[2]: {'c':'#e74c3c', 'lbl':'ZONA MERAH', 'desc':'Bahaya / Tinggi', 'score': 3}
     }
     
     colors, labels, city_scores = {}, {}, {}
@@ -77,9 +79,11 @@ def calculate_province_status(df_filtered, city_scores):
     kota_totals = df_filtered.groupby('nama_kabupaten_kota')['jumlah_kasus'].sum()
     total_kasus_provinsi = kota_totals.sum()
     
+    # Jika data kosong
     if total_kasus_provinsi == 0:
         return {'lbl':'ZONA HIJAU', 'desc':'Tidak Ada Kasus', 'c':'#2ecc71'}
 
+    # Rumus: Weighted Risk Score
     weighted_score = 0
     for kota, total in kota_totals.items():
         score = city_scores.get(kota, 1) 
@@ -87,52 +91,64 @@ def calculate_province_status(df_filtered, city_scores):
     
     avg_risk_index = weighted_score / total_kasus_provinsi
     
+    # Ambang Batas Penilaian
     if avg_risk_index >= 2.2:
-        return {'lbl':'ZONA MERAH', 'desc':'Bahaya', 'c':'#e74c3c'}
+        return {'lbl':'ZONA MERAH', 'desc':'Bahaya (Dominasi Klaster Tinggi)', 'c':'#e74c3c'}
     elif avg_risk_index >= 1.6:
-        return {'lbl':'ZONA KUNING', 'desc':'Waspada', 'c':'#f1c40f'}
+        return {'lbl':'ZONA KUNING', 'desc':'Waspada (Sebaran Meningkat)', 'c':'#f1c40f'}
     else:
-        return {'lbl':'ZONA HIJAU', 'desc':'Risiko Rendah', 'c':'#2ecc71'}
+        # [UPDATE] LABEL PROVINSI UNTUK ZONA HIJAU
+        return {'lbl':'ZONA HIJAU', 'desc':'Risiko Rendah (Dominasi Klaster Rendah)', 'c':'#2ecc71'}
 
 def get_policy_advice(zona_label, data_usia, filter_gender):
     advice = []
+    
+    # A. ZONA
     if zona_label == 'ZONA MERAH':
-        advice.append("<b>🚨 DARURAT:</b> Eskalasi kasus tinggi. Perlu audit stok ARV.")
-        advice.append("<b>🏥 FASKES:</b> Skrining wajib pasien rawat inap.")
+        advice.append("<b>🚨 DARURAT PROVINSI:</b> Eskalasi kasus tinggi. Gubernur perlu menginstruksikan penambahan anggaran darurat HIV dan audit stok obat ARV di seluruh RSUD.")
+        advice.append("<b>🏥 FASKES:</b> Wajibkan skrining HIV bagi seluruh pasien rawat inap dengan gejala oportunistik di RS Rujukan.")
     elif zona_label == 'ZONA KUNING':
-        advice.append("<b>⚠️ WASPADA:</b> Tren naik. Perkuat supervisi.")
-        advice.append("<b>📢 KAMPANYE:</b> Sosialisasi masif via medsos.")
-    else:
-        advice.append("<b>✅ MONITORING:</b> Pertahankan kondisi. Fokus edukasi.")
+        advice.append("<b>⚠️ PERINGATAN DINI:</b> Tren kasus meningkat. Perkuat peran Dinkes Provinsi untuk supervisi daerah dengan kasus tinggi.")
+        advice.append("<b>📢 KAMPANYE:</b> Gencarkan sosialisasi masif melalui media sosial dan tokoh masyarakat tingkat provinsi.")
+    else: # HIJAU (RISIKO RENDAH)
+        advice.append("<b>✅ MONITORING:</b> Pertahankan kondisi risiko rendah. Fokuskan anggaran pada edukasi preventif untuk mencegah lonjakan kasus.")
 
-    if data_usia['Anak-anak'] > 0: advice.append("<b>👶 ANAK:</b> Prioritas Triple Eliminasi.")
-    if data_usia['Remaja'] > 50: advice.append("<b>🎓 REMAJA:</b> Masukkan modul kesehatan di sekolah.")
+    # B. UMUR
+    if data_usia['Anak-anak'] > 0:
+        advice.append("<b>👶 IBU & ANAK:</b> Prioritas penyelamatan generasi. Audit pelaksanaan 'Triple Eliminasi' pada Ibu Hamil di seluruh Puskesmas.")
+    if data_usia['Remaja'] > 50:
+        advice.append("<b>🎓 REMAJA:</b> Kasus muda tinggi. Disdik Provinsi wajib memasukkan modul kesehatan reproduksi di SMA/SMK.")
 
-    if filter_gender == 'LAKI-LAKI': advice.append("<b>♂️ LAKI-LAKI:</b> Fokus komunitas pekerja.")
-    elif filter_gender == 'PEREMPUAN': advice.append("<b>♀️ PEREMPUAN:</b> Fokus via Posyandu/PKK.")
+    # C. GENDER
+    if filter_gender == 'LAKI-LAKI':
+        advice.append("<b>♂️ LAKI-LAKI:</b> Fokus pada komunitas pekerja dan bapak rumah tangga. Libatkan Serikat Pekerja untuk sosialisasi.")
+    elif filter_gender == 'PEREMPUAN':
+        advice.append("<b>♀️ PEREMPUAN:</b> Fokus perlindungan Ibu Rumah Tangga. Optimalkan peran PKK dan Posyandu untuk deteksi dini.")
         
     return advice
 
 # ==========================================
-# 4. SIDEBAR MENU
+# 4. SIDEBAR MENU & PROSES UTAMA
 # ==========================================
 if df is not None:
     st.sidebar.header("🎛️ Filter Data")
     
+    # Widget persis seperti code reference, tapi pakai Streamlit API
     opt_th = ['SEMUA TAHUN'] + sorted(df['tahun'].unique(), reverse=True)
-    th = st.sidebar.selectbox("Pilih Tahun:", opt_th)
+    th = st.sidebar.selectbox("📅 Tahun:", opt_th)
     
     opt_jk = ['SEMUA GENDER'] + sorted(df['jenis_kelamin'].unique().tolist())
-    jk = st.sidebar.selectbox("Pilih Gender:", opt_jk)
+    jk = st.sidebar.selectbox("👥 Gender:", opt_jk)
     
     opt_kt = ['SEMUA KAB/KOTA'] + sorted(df['nama_kabupaten_kota'].unique())
-    kt = st.sidebar.selectbox("Highlight Wilayah:", opt_kt)
+    kt = st.sidebar.selectbox("📍 Highlight:", opt_kt)
 
     # --- FILTER DATA ---
     df_f = df.copy()
     if th != 'SEMUA TAHUN': df_f = df_f[df_f['tahun'] == th]
     if jk != 'SEMUA GENDER': df_f = df_f[df_f['jenis_kelamin'] == jk]
 
+    # --- HITUNG AI CLUSTERS ---
     colors, labels_data, city_scores = get_ai_clusters(df_f)
     
     df_grp = df_f.groupby('nama_kabupaten_kota')['jumlah_kasus'].sum()
@@ -141,79 +157,78 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. GENERATE PETA (VERSI FIX POPUP/TOOLTIP)
+    # 5. PEMBUATAN PETA (SAMA PERSIS LOGIKANYA)
     # ==========================================
-    
-    # Inisialisasi Peta
-    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=8, tiles='CartoDB positron')
-
     geo_current = copy.deepcopy(geo_data_raw)
     
-    # Loop manual setiap fitur agar Tooltip dan Popup bisa dikontrol terpisah
     for feature in geo_current['features']:
         kota = feature['properties']['name'].title()
         tot = df_grp.get(kota, 0)
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
-        base_color = colors.get(kota, '#95a5a6')
         
-        # 1. STYLE (Warna Wilayah)
-        # Jika kota dipilih di filter highlight, beri border Cyan tebal
-        def get_style(feature, kota_name=kota, color=base_color, highlight=kt):
-            weight = 1
-            border_color = 'white'
-            opacity = 0.7
-            if highlight != 'SEMUA KAB/KOTA' and kota_name.upper() == highlight.upper():
-                weight = 4
-                border_color = 'cyan'
-                opacity = 0.9
-            return {'fillColor': color, 'color': border_color, 'weight': weight, 'fillOpacity': opacity}
-
-        # 2. ISI POPUP (HTML Table saat di-KLIK)
-        # Penting: Kita bungkus div dengan background-color: white dan color: black 
-        # agar tidak bentrok dengan Dark Mode Streamlit.
         r = df_det.loc[kota] if kota in df_det.index else pd.Series({'Anak-anak':0, 'Remaja':0, 'Dewasa':0, 'Lansia':0})
         
-        popup_html = f"""
-        <div style="font-family: Arial; width: 200px; background-color: white; color: #333; padding: 5px; border-radius: 5px;">
-            <h4 style="margin: 0 0 5px 0; color: black;">{kota.upper()}</h4>
-            <div style="font-size: 12px; margin-bottom: 5px;">
-                <b>{risk_info.get('lbl')}</b><br>
-                Total Kasus: <b>{tot:,.0f}</b>
-            </div>
-            <hr style="margin: 5px 0; border: 0; border-top: 1px solid #ddd;">
-            <table style="width:100%; font-size:11px; border-collapse: collapse; color: #333;">
-                <tr style="border-bottom:1px solid #eee;"><td>Anak</td><td align="right"><b>{r['Anak-anak']}</b></td></tr>
-                <tr style="border-bottom:1px solid #eee;"><td>Remaja</td><td align="right"><b>{r['Remaja']}</b></td></tr>
-                <tr style="border-bottom:1px solid #eee;"><td>Dewasa</td><td align="right"><b>{r['Dewasa']}</b></td></tr>
-                <tr><td>Lansia</td><td align="right"><b>{r['Lansia']}</b></td></tr>
-            </table>
-        </div>
-        """
+        # HTML Tabel Popup (Persis dari code referensi)
+        tbl_popup = f"""
+        <table style="width:100%; font-size:10px; border-collapse: collapse;">
+            <tr><td style="border-bottom:1px solid #ddd;">Anak</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Anak-anak']}</b></td></tr>
+            <tr><td style="border-bottom:1px solid #ddd;">Remaja</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Remaja']}</b></td></tr>
+            <tr><td style="border-bottom:1px solid #ddd;">Dewasa</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Dewasa']}</b></td></tr>
+            <tr><td>Lansia</td><td style="text-align:right;"><b>{r['Lansia']}</b></td></tr>
+        </table>"""
         
-        # 3. TOOLTIP (Hanya Teks saat HOVER)
-        tooltip_text = f"{kota}: {risk_info.get('lbl')} (Total: {tot})"
+        feature['properties']['fillColor'] = colors.get(kota, '#95a5a6')
+        feature['properties']['info_filter'] = f"{th} | {jk}"
+        feature['properties']['total_display'] = f"{tot:,.0f}"
+        feature['properties']['risk_display'] = f"{risk_info.get('lbl')} ({risk_info.get('desc')})"
+        # Popup Content disiapkan di sini, nanti dipanggil di loop bawah
+        feature['properties']['popup_content'] = f"<div style='width:160px'><b>{kota.upper()}</b><br>{risk_info.get('lbl')}<br>Total: {tot}<hr>{tbl_popup}</div>"
 
-        # 4. Tambahkan ke Peta
-        gj = folium.GeoJson(
-            feature,
-            style_function=lambda x, style=get_style(feature): style,
-            tooltip=tooltip_text 
-        )
-        
-        # Attach Popup HTML yang sudah dirender
-        folium.Popup(popup_html, max_width=250).add_to(gj)
-        gj.add_to(m)
+    def style_function_dynamic(feature):
+        kota_name = feature['properties']['name'].title()
+        base = feature['properties']['fillColor']
+        if kt != 'SEMUA KAB/KOTA' and kota_name.upper() == kt.upper():
+            return {'fillColor': base, 'color': 'cyan', 'weight': 4, 'fillOpacity': 0.9, 'opacity': 1}
+        return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
 
-    # ==========================================
-    # 6. TAMPILAN LAYOUT
-    # ==========================================
+    # Setup Map & Legend
+    sw, ne = [-8.0, 106.0], [-5.5, 109.0]
+    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=8, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
+    m.fit_bounds([sw, ne])
+
+    # Tooltip Configuration (Persis dari code referensi)
+    tooltip = folium.GeoJsonTooltip(
+        fields=['name','info_filter','risk_display','total_display'], 
+        aliases=['Wilayah:','Filter:','Status:','Total:'], 
+        style="background:white; color:#333; padding:10px; border-radius:5px;"
+    )
     
+    # Render GeoJSON ke Map
+    gj = folium.GeoJson(
+        geo_current, 
+        style_function=style_function_dynamic, 
+        tooltip=tooltip
+    ).add_to(m)
+    
+    # Menambahkan Popup satu per satu (agar HTML ter-render dengan benar)
+    for feature, element in zip(geo_current['features'], gj.data['features']):
+        # Kita ambil content yg sudah disiapkan di atas
+        content = feature['properties']['popup_content']
+        # Tambahkan ke object GeoJson folium
+        folium.Popup(content, max_width=250).add_to(gj)
+
+
+    # ==========================================
+    # 6. MEMBUAT HTML LAPORAN (SAMA PERSIS)
+    # ==========================================
     if kt == 'SEMUA KAB/KOTA':
         judul_lap = "JAWA BARAT (PROVINSI)"
         prov_status = calculate_province_status(df_f, city_scores)
         zona_stats = prov_status 
         tot_val = df_f['jumlah_kasus'].sum()
-        r = df_f.pivot_table(columns='kategori_simple', values='jumlah_kasus', aggfunc='sum').iloc[0] if not df_f.empty else pd.Series()
+        # Hitung manual per kategori untuk provinsi
+        r = df_f.pivot_table(columns='kategori_simple', values='jumlah_kasus', aggfunc='sum')
+        r = r.iloc[0] if not r.empty else pd.Series()
         det_val = {k: r.get(k, 0) for k in ['Anak-anak','Remaja','Dewasa','Lansia']}
         warna_header = prov_status['c'] 
     else:
@@ -225,51 +240,90 @@ if df is not None:
         warna_header = colors.get(kt.title(), "#95a5a6")
 
     rekomendasi = get_policy_advice(zona_stats.get('lbl'), det_val, jk)
-    list_rek = "".join([f"<li style='margin-bottom:5px;'>{x}</li>" for x in rekomendasi])
+    html_rekomendasi = "<ul style='margin:0; padding-left:20px;'>"
+    for rec in rekomendasi: html_rekomendasi += f"<li style='margin-bottom:8px;'>{rec}</li>"
+    html_rekomendasi += "</ul>"
 
+    html_table = f"""
+    <table style="width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px; margin-top:10px; color:#333;">
+        <tr style="background-color: #f1f2f6; color: #333;">
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">KELOMPOK USIA</th>
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">JUMLAH KASUS</th>
+        </tr>
+        <tr><td style="border: 1px solid #ddd; padding: 8px;">Anak-anak</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val['Anak-anak']:,.0f}</td></tr>
+        <tr><td style="border: 1px solid #ddd; padding: 8px;">Remaja</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val['Remaja']:,.0f}</td></tr>
+        <tr><td style="border: 1px solid #ddd; padding: 8px;">Dewasa</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val['Dewasa']:,.0f}</td></tr>
+        <tr><td style="border: 1px solid #ddd; padding: 8px;">Lansia</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val['Lansia']:,.0f}</td></tr>
+    </table>"""
+
+    html_top5 = ""
+    if kt == 'SEMUA KAB/KOTA':
+        top5 = df_grp.sort_values(ascending=False).head(5)
+        rows = ""
+        max_v = top5.max() if not top5.empty else 1
+        for c, v in top5.items():
+            pct = (v/max_v)*100
+            rows += f"<tr><td style='padding:5px; border-bottom:1px solid #eee;'>{c}</td><td style='padding:5px; text-align:right; border-bottom:1px solid #eee;'><b>{v}</b></td><td style='padding:5px; width:40%; border-bottom:1px solid #eee;'><div style='background:#3498db; width:{pct}%; height:8px; border-radius:4px;'></div></td></tr>"
+        html_top5 = f"<div style='margin-top:20px; border:1px solid #ddd; padding:10px; border-radius:5px;'><b style='color:#555;'>🏆 5 WILAYAH TERTINGGI</b><table style='width:100%; font-size:12px; margin-top:5px; border-collapse:collapse; color:#333;'>{rows}</table></div>"
+
+    # HTML FINAL (WRAPPER)
+    # Saya pastikan CSS di sini memaksa background putih agar tidak bentrok dengan Dark Mode Streamlit
+    final_html = f"""
+    <div style="font-family: Arial, sans-serif; color:#333; background-color:white; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div style="background-color: {warna_header}; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin:0;">📊 LAPORAN: {judul_lap}</h3>
+                    <div style="font-size:13px; margin-top:5px; opacity:0.9;">FILTER GENDER: <b>{jk}</b></div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:11px; text-transform:uppercase; opacity:0.8;">STATUS RISIKO</div>
+                    <div style="font-size:18px; font-weight:bold;">{zona_stats.get('lbl')}</div>
+                    <div style="font-size:11px;">{zona_stats.get('desc')}</div>
+                </div>
+            </div>
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.3); margin:10px 0;">
+            <div style="font-size:14px;">TOTAL KASUS: <b style="font-size:16px;">{tot_val:,.0f}</b> ORANG</div>
+        </div>
+        <div style="border: 1px solid #ddd; border-top:none; padding: 20px; border-radius: 0 0 8px 8px; background-color:white;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <b style="color:#555; display:block; border-bottom:2px solid #eee; padding-bottom:5px;">📋 DATA DEMOGRAFI</b>
+                    {html_table}
+                    {html_top5}
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <div style="background-color: #fff8e1; border-left: 5px solid #f1c40f; padding: 15px; border-radius: 4px;">
+                        <b style="color:#d35400; display:block; margin-bottom:10px;">💡 REKOMENDASI KEBIJAKAN</b>
+                        <div style="font-size: 13px; line-height: 1.5; color:#333;">{html_rekomendasi}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+    # ==========================================
+    # 7. TAMPILKAN KE LAYAR
+    # ==========================================
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.subheader("🗺️ Peta Persebaran Risiko")
-        st.caption("Arahkan mouse untuk info singkat, Klik wilayah untuk detail umur.")
-        st.markdown("""
-        <div style="padding:10px; background:#f8f9fa; border:1px solid #ddd; border-radius:5px; font-size:12px; margin-bottom:10px; color:black;">
-            <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;|&nbsp;
-            <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;|&nbsp;
-            <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("### 🗺️ Peta Persebaran Risiko")
         st_folium(m, width="100%", height=500)
+        # Menampilkan Legend Manual di bawah peta
+        st.markdown('''
+        <div style="font-size:12px; background:white; padding: 10px; border:1px solid #ddd; border-radius:5px; color:#333; margin-top:5px;">
+        <b>ZONA RISIKO (AI)</b> &nbsp;
+        <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;
+        <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;
+        <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
+        </div>
+        ''', unsafe_allow_html=True)
 
     with col2:
-        # Card HTML dipaksa background putih agar kontras aman di Dark Mode
-        html_card = f"""
-        <div style="font-family: sans-serif; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background-color: white; color: #333;">
-            <div style="background-color: {warna_header}; color: white; padding: 15px;">
-                <h3 style="margin:0; font-size:18px;">{judul_lap}</h3>
-                <p style="margin:5px 0 0; opacity:0.9; font-size:14px;">Total Kasus: <b>{tot_val:,.0f}</b></p>
-                <div style="margin-top:10px; background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:5px; display:inline-block;">
-                    <b>{zona_stats.get('lbl')}</b><br>
-                    <small>{zona_stats.get('desc')}</small>
-                </div>
-            </div>
-            <div style="padding: 15px;">
-                <b style="color:#555;">📊 Demografi Usia:</b>
-                <table style="width:100%; font-size:13px; margin-top:5px; border-collapse: collapse; color: #333;">
-                    <tr style="border-bottom:1px solid #eee;"><td>Anak-anak</td><td align="right"><b>{det_val['Anak-anak']:,.0f}</b></td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td>Remaja</td><td align="right"><b>{det_val['Remaja']:,.0f}</b></td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td>Dewasa</td><td align="right"><b>{det_val['Dewasa']:,.0f}</b></td></tr>
-                    <tr><td>Lansia</td><td align="right"><b>{det_val['Lansia']:,.0f}</b></td></tr>
-                </table>
-                <br>
-                <div style="background-color: #fff8e1; border-left: 4px solid #f1c40f; padding: 10px; color: #d35400;">
-                    <b>💡 Rekomendasi:</b>
-                    <ul style="padding-left:20px; margin:5px 0 0; font-size:13px;">{list_rek}</ul>
-                </div>
-            </div>
-        </div>
-        """
-        st.markdown(html_card, unsafe_allow_html=True)
+        st.markdown("### 📑 Laporan Wilayah")
+        st.markdown(final_html, unsafe_allow_html=True)
 
 else:
-    st.warning("Data belum dimuat. Pastikan file CSV dan GeoJSON ada di folder yang sama.")
+    st.warning("Data belum dimuat.")
