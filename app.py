@@ -10,7 +10,18 @@ from streamlit_folium import st_folium
 # ==========================================
 # 1. KONFIGURASI HALAMAN
 # ==========================================
-st.set_page_config(page_title="Dashboard HIV Jabar") # Layout centered agar laporan dibawah peta enak dibaca
+st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar") # Layout centered agar laporan dibawah peta enak dibaca
+
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 2. LOAD DATA
