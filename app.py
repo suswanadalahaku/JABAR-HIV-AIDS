@@ -201,7 +201,7 @@ if df is not None:
 
     tooltip = folium.GeoJsonTooltip(
         fields=['name', 'risk_display', 'total_display'], 
-        aliases=['Wilayah:', 'Status:', 'Total:'], 
+        aliases=['Wilayah:', 'Status:', 'Total Kasus:'], 
         style="""
             background-color: white; 
             color: #333; 
