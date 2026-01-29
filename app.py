@@ -159,7 +159,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA
+    # 5. PEMBUATAN PETA (TOOLTIP STYLE MODERN)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -167,62 +167,68 @@ if df is not None:
         kota = feature['properties']['name'].title()
         tot = df_grp.get(kota, 0)
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
-        r = df_det.loc[kota] if kota in df_det.index else pd.Series({'Anak-anak':0, 'Remaja':0, 'Dewasa':0, 'Lansia':0})
         
-        # HTML Tabel untuk POPUP (Klik)
-        tbl_popup = f"""
-        <table style="width:100%; font-size:10px; border-collapse: collapse;">
-            <tr><td style="border-bottom:1px solid #ddd;">Anak</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Anak-anak']}</b></td></tr>
-            <tr><td style="border-bottom:1px solid #ddd;">Remaja</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Remaja']}</b></td></tr>
-            <tr><td style="border-bottom:1px solid #ddd;">Dewasa</td><td style="text-align:right; border-bottom:1px solid #ddd;"><b>{r['Dewasa']}</b></td></tr>
-            <tr><td>Lansia</td><td style="text-align:right;"><b>{r['Lansia']}</b></td></tr>
-        </table>"""
+        # Ambil warna zona untuk header tooltip
+        warna_zona = colors.get(kota, '#95a5a6')
         
-        feature['properties']['fillColor'] = colors.get(kota, '#95a5a6')
-        
-        # Data Tooltip
-        feature['properties']['info_filter'] = f"{th} | {jk}"
-        feature['properties']['total_display'] = f"{tot:,.0f}"
-        feature['properties']['risk_display'] = f"{risk_info.get('lbl')}"
-        
-        # Data Popup
-        feature['properties']['popup_content'] = f"<div style='width:160px'><b>{kota.upper()}</b><br>{risk_info.get('lbl')}<br>Total: {tot}<hr>{tbl_popup}</div>"
+        # -----------------------------------------------------------
+        # STYLE BARU: Tooltip "Card" Style
+        # -----------------------------------------------------------
+        html_tooltip = f"""
+        <div style="
+            font-family: 'Segoe UI', sans-serif;
+            min-width: 160px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+        ">
+            <div style="
+                background-color: {warna_zona};
+                color: white;
+                padding: 8px 12px;
+                font-size: 13px;
+                font-weight: bold;
+                letter-spacing: 0.5px;
+            ">
+                {kota.upper()}
+            </div>
+            <div style="padding: 10px 12px; color: #444; font-size: 12px;">
+                <div style="margin-bottom:4px;">
+                    Status: <b>{risk_info.get('lbl')}</b>
+                </div>
+                <div>
+                    Total Kasus: <b>{tot:,.0f}</b>
+                </div>
+            </div>
+        </div>
+        """
+        # -----------------------------------------------------------
+
+        # Simpan HTML cantik tadi ke dalam properti 'tooltip_custom'
+        feature['properties']['fillColor'] = warna_zona
+        feature['properties']['tooltip_custom'] = html_tooltip
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
         base = feature['properties']['fillColor']
+        # Highlight border jika kota dipilih di filter
         if kt != 'SEMUA KAB/KOTA' and kota_name.upper() == kt.upper():
             return {'fillColor': base, 'color': 'cyan', 'weight': 4, 'fillOpacity': 0.9, 'opacity': 1}
         return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
 
     sw, ne = [-8.0, 106.0], [-5.5, 109.0]
-    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=10, max_bounds=True, tiles='CartoDB positron')
+    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
-    tooltip = folium.GeoJsonTooltip(
-        fields=['name', 'risk_display', 'total_display'], 
-        aliases=['Wilayah:', 'Status:', 'Total Kasus:'], 
-        style="""
-            background-color: white; 
-            color: #333; 
-            font-family: sans-serif; 
-            font-size: 12px;
-            padding: 10px; 
-            border: 1px solid #ccc; 
-            border-radius: 5px; 
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-        """
-    )
-    
-    gj = folium.GeoJson(
+    # RENDER PETA
+    # Perhatikan: kita menggunakan field 'tooltip_custom' yang berisi HTML tadi
+    folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        tooltip=tooltip
+        tooltip=folium.GeoJsonTooltip(fields=['tooltip_custom'], labels=False) 
     ).add_to(m)
-    
-    for feature, element in zip(geo_current['features'], gj.data['features']):
-        content = feature['properties']['popup_content']
-        folium.Popup(content, max_width=250).add_to(gj)
 
 
     # ==========================================
