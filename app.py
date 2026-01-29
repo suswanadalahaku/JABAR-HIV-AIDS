@@ -157,7 +157,7 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA (HOVER = DETAIL, CLICK = SIMPLE)
+    # 5. PEMBUATAN PETA (POPUP DETAIL USIA + STYLE CANTIK)
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
@@ -167,17 +167,17 @@ if df is not None:
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
         warna_zona = colors.get(kota, '#95a5a6')
         
-        # --- A. UNTUK POPUP (KLIK) -> TAMPILAN SEDERHANA ---
-        html_simple = f"""
-        <div style='font-family:Arial; width:150px;'>
-            <b>{kota.upper()}</b><br>
-            <span style='font-size:10px;'>{risk_info.get('lbl')}</span><br>
-            Total: {tot:,.0f}
-        </div>
-        """
-
-        # --- B. UNTUK TOOLTIP (HOVER) -> TAMPILAN DETAIL (CARD) ---
-        html_detail = f"""
+        # Ambil data detail per usia untuk kota ini
+        if kota in df_det.index:
+            d_anak = df_det.loc[kota, 'Anak-anak']
+            d_remaja = df_det.loc[kota, 'Remaja']
+            d_dewasa = df_det.loc[kota, 'Dewasa']
+            d_lansia = df_det.loc[kota, 'Lansia']
+        else:
+            d_anak = 0; d_remaja = 0; d_dewasa = 0; d_lansia = 0
+        
+        # --- A. HTML UNTUK TOOLTIP (HOVER) -> TAMPILAN DETAIL RINGKAS ---
+        html_hover = f"""
         <div style="
             font-family: 'Segoe UI', sans-serif;
             width: 200px; 
@@ -194,20 +194,62 @@ if df is not None:
                 padding: 10px 12px;
                 font-size: 14px;
                 font-weight: bold;
+            ">
+                {kota.upper()}
+            </div>
+            <div style="padding: 12px; color: #444; font-size: 13px;">
+                <div style="margin-bottom:5px;">Status: <b>{risk_info.get('lbl')}</b></div>
+                <div>Total Kasus: <b>{tot:,.0f}</b></div>
+                <div style="font-size:10px; color:#999; margin-top:5px;">(Klik untuk Detail Usia)</div>
+            </div>
+        </div>
+        """
+
+        # --- B. HTML UNTUK POPUP (KLIK) -> TABEL DETAIL USIA + STYLE CANTIK ---
+        html_popup_detail = f"""
+        <div style="
+            font-family: 'Segoe UI', sans-serif;
+            width: 240px; 
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+            margin-bottom: 5px;
+        ">
+            <div style="
+                background-color: {warna_zona};
+                color: white;
+                padding: 12px;
+                font-size: 14px;
+                font-weight: bold;
                 letter-spacing: 0.5px;
             ">
                 {kota.upper()}
             </div>
-            <div style="padding: 12px 12px; color: #444; font-size: 13px;">
-                <div style="margin-bottom:6px;">
-                    Status: <b>{risk_info.get('lbl')}</b>
-                </div>
-                <div>
-                    Total Kasus: <b>{tot:,.0f}</b>
-                </div>
-                <div style="margin-top:8px; font-size:11px; color:#888;">
-                    {risk_info.get('desc')}
-                </div>
+            <div style="padding: 15px; color: #444;">
+                <table style="width:100%; border-collapse: collapse; font-size:13px;">
+                    <tr style="border-bottom: 2px solid #eee; color:#666;">
+                        <th style="text-align:left; padding-bottom:5px;">KELOMPOK USIA</th>
+                        <th style="text-align:right; padding-bottom:5px;">KASUS</th>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f5f5f5;">
+                        <td style="padding: 6px 0;">Anak-anak</td>
+                        <td style="text-align:right; font-weight:bold;">{d_anak:,.0f}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f5f5f5;">
+                        <td style="padding: 6px 0;">Remaja</td>
+                        <td style="text-align:right; font-weight:bold;">{d_remaja:,.0f}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f5f5f5;">
+                        <td style="padding: 6px 0;">Dewasa</td>
+                        <td style="text-align:right; font-weight:bold;">{d_dewasa:,.0f}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0;">Lansia</td>
+                        <td style="text-align:right; font-weight:bold;">{d_lansia:,.0f}</td>
+                    </tr>
+                </table>
             </div>
         </div>
         """
@@ -215,8 +257,8 @@ if df is not None:
         feature['properties']['fillColor'] = warna_zona
         
         # SIMPAN KONTEN KE PROPERTI GEOJSON
-        feature['properties']['isi_popup'] = html_simple     # Klik
-        feature['properties']['isi_tooltip'] = html_detail   # Hover
+        feature['properties']['isi_popup'] = html_popup_detail # Klik -> Tabel Detail
+        feature['properties']['isi_tooltip'] = html_hover      # Hover -> Ringkas
 
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
@@ -233,11 +275,8 @@ if df is not None:
     folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
-        # LOGIKA DITUKAR DI SINI:
-        # Hover (Tooltip) -> Ambil konten detail
-        tooltip=folium.GeoJsonTooltip(fields=['isi_tooltip'], labels=False),
-        # Klik (Popup) -> Ambil konten simple
-        popup=folium.GeoJsonPopup(fields=['isi_popup'], labels=False) 
+        tooltip=folium.GeoJsonTooltip(fields=['isi_tooltip'], labels=False), # Hover
+        popup=folium.GeoJsonPopup(fields=['isi_popup'], labels=False)        # Klik
     ).add_to(m)
 
     # ==========================================
