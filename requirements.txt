@@ -1,5 +1,6 @@
 pandas
 folium
 scikit-learn
-streamlit
+streamlit>=1.23.0
 streamlit-folium
+altair<5
