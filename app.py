@@ -142,14 +142,31 @@ if df is not None:
     
     opt_kt = ['SEMUA KAB/KOTA'] + sorted(df['nama_kabupaten_kota'].unique())
     
-    # --- UPDATE LOGIC SIDEBAR AGAR BISA DIPICU DARI MAP ---
-    if 'selected_kt' not in st.session_state:
-        st.session_state.selected_kt = 'SEMUA KAB/KOTA'
+    # --- PERBAIKAN 1: Inisialisasi State Penampung (Proxy) ---
+    if 'target_kota' not in st.session_state:
+        st.session_state.target_kota = 'SEMUA KAB/KOTA'
 
-    st.sidebar.selectbox("📍 Kabupaten/Kota:", opt_kt, key='selected_kt')
+    # Fungsi callback: Jika user ganti lewat Sidebar, update state penampung
+    def update_dari_sidebar():
+        st.session_state.target_kota = st.session_state.widget_kt
+
+    # Hitung index untuk default value selectbox
+    try:
+        index_pilihan = opt_kt.index(st.session_state.target_kota)
+    except ValueError:
+        index_pilihan = 0
+
+    # Render Selectbox dengan key BERBEDA ('widget_kt')
+    st.sidebar.selectbox(
+        "📍 Kabupaten/Kota:", 
+        opt_kt, 
+        index=index_pilihan,
+        key='widget_kt',
+        on_change=update_dari_sidebar
+    )
     
-    # Variable kt mengambil dari session state
-    kt = st.session_state.selected_kt
+    # Variabel utama 'kt' mengambil dari state penampung
+    kt = st.session_state.target_kota
 
     # --- FILTER DATA ---
     df_f = df.copy()
@@ -250,14 +267,15 @@ if df is not None:
     # 2. Render Peta & Tangkap Click
     map_data = st_folium(m, width="100%", height=550)
 
-    # 3. Logika Update Filter saat Klik
+    # 3. Logika Update Filter saat Klik Peta
     if map_data and map_data.get('last_active_drawing'):
         properties = map_data['last_active_drawing'].get('properties', {})
         clicked_name = properties.get('name', '').title()
         
-        # Validasi nama kota dan cek apakah beda dengan state sekarang
-        if clicked_name in opt_kt and clicked_name != st.session_state.selected_kt:
-            st.session_state.selected_kt = clicked_name
+        # Validasi: Cek apakah nama kota ada di opsi DAN beda dengan yang sekarang
+        if clicked_name in opt_kt and clicked_name != st.session_state.target_kota:
+            # PERBAIKAN 2: Update state penampung, BUKAN key widget langsung
+            st.session_state.target_kota = clicked_name
             st.rerun()
 
     # --- PERSIAPAN HTML LAPORAN (SAMA SEPERTI SEBELUMNYA) ---
