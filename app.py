@@ -384,7 +384,7 @@ if df is not None:
     # Legend
     st.markdown('''
     <div style="font-family:sans-serif; font-size:14px; margin-bottom: 5px; font-weight:bold;">
-        ZONA RISIKO (AI) &nbsp;&nbsp;&nbsp;
+        ZONA RISIKO &nbsp;&nbsp;&nbsp;
         <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
         <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
         <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
