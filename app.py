@@ -231,8 +231,19 @@ if df is not None:
     st.title("Peta Persebaran Risiko HIV Jawa Barat")
     
     st.markdown('''
-    <div style="font-family:sans-serif; font-size:14px; margin-bottom: 5px; font-weight:bold;">
-        ZONA RISIKO (AI) &nbsp;&nbsp;&nbsp;
+    <div style="
+        font-family: sans-serif; 
+        font-size: 14px; 
+        margin-bottom: 10px; 
+        font-weight: bold;
+        background-color: #ffffff;
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        display: inline-block;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    ">
+        ZONA RISIKO &nbsp;&nbsp;&nbsp;
         <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
         <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
         <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
