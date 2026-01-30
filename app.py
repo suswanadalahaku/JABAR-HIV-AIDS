@@ -12,6 +12,13 @@ from streamlit_folium import st_folium
 # ==========================================
 st.set_page_config(layout="wide", page_title="Dashboard HIV Jabar")
 
+st.set_page_config(
+    page_title="Dashboard HIV Jabar",
+    page_icon="🎗️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 st.markdown("""
 <style>
     .block-container {
@@ -233,7 +240,7 @@ if df is not None:
     ''', unsafe_allow_html=True)
 
     sw, ne = [-8.0, 106.0], [-5.5, 109.0]
-    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=12, max_bounds=True, tiles='CartoDB positron')
+    m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=10, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
     folium.GeoJson(
