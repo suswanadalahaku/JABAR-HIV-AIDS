@@ -20,6 +20,10 @@ st.markdown("""
         padding-left: 2rem;
         padding-right: 2rem;
     }
+    /* Mempercantik tampilan font global */
+    html, body, [class*="css"] {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -129,7 +133,7 @@ def get_policy_advice(zona_label, data_usia, filter_gender):
     return advice
 
 # ==========================================
-# 4. SIDEBAR & LOGIKA INTERAKTIF (HYBRID)
+# 4. SIDEBAR & LOGIKA INTERAKTIF
 # ==========================================
 if df is not None:
     # --- A. STATE MANAGEMENT ---
@@ -139,12 +143,10 @@ if df is not None:
     # --- B. SIDEBAR ---
     st.sidebar.header("🎛️ Filter Data")
     
-    # LOGIKA UTAMA: TAMPILKAN DROPDOWN ATAU TOMBOL RESET?
     if st.session_state.selected_city == 'SEMUA KAB/KOTA':
-        # --- MODE 1: PENCARIAN (Tampilkan Dropdown) ---
+        # Mode Pencarian (Dropdown)
         opt_kt = ['SEMUA KAB/KOTA'] + sorted(df['nama_kabupaten_kota'].unique())
         
-        # Callback jika user memilih dari dropdown
         def on_dropdown_change():
             st.session_state.selected_city = st.session_state.dropdown_val
 
@@ -156,7 +158,7 @@ if df is not None:
             on_change=on_dropdown_change
         )
     else:
-        # --- MODE 2: FOKUS KOTA (Sembunyikan Dropdown, Tampilkan Reset) ---
+        # Mode Fokus (Reset Button)
         st.sidebar.success(f"📍 Fokus: **{st.session_state.selected_city}**")
         
         if st.sidebar.button("🔄 Reset ke Provinsi", type="primary"):
@@ -165,22 +167,20 @@ if df is not None:
     
     st.sidebar.markdown("---")
     
-    # Filter Lainnya (Selalu Muncul)
     opt_th = ['SEMUA TAHUN'] + sorted(df['tahun'].unique(), reverse=True)
     th = st.sidebar.selectbox("📅 Tahun:", opt_th)
     
     opt_jk = ['SEMUA GENDER'] + sorted(df['jenis_kelamin'].unique().tolist())
     jk = st.sidebar.selectbox("👥 Gender:", opt_jk)
     
-    # Variable Shortcut untuk Logic selanjutnya
     kt = st.session_state.selected_city
 
-    # --- FILTER DATA UTAMA ---
+    # --- FILTER DATA ---
     df_f = df.copy()
     if th != 'SEMUA TAHUN': df_f = df_f[df_f['tahun'] == th]
     if jk != 'SEMUA GENDER': df_f = df_f[df_f['jenis_kelamin'] == jk]
 
-    # --- HITUNG AI & AGGREGASI ---
+    # --- HITUNG AI ---
     colors, labels_data, city_scores = get_ai_clusters(df_f)
     
     df_grp = df_f.groupby('nama_kabupaten_kota')['jumlah_kasus'].sum()
@@ -189,18 +189,16 @@ if df is not None:
         if c not in df_det.columns: df_det[c] = 0
 
     # ==========================================
-    # 5. PEMBUATAN PETA (MAP)
+    # 5. PETA
     # ==========================================
     geo_current = copy.deepcopy(geo_data_raw)
     
-    # 1. SETUP GEOJSON DATA
     for feature in geo_current['features']:
         kota_nm = feature['properties']['name'].title()
         tot = df_grp.get(kota_nm, 0)
         risk_info = labels_data.get(kota_nm, {'lbl':'N/A', 'desc':''})
         warna_zona = colors.get(kota_nm, '#95a5a6')
         
-        # HTML Tooltip (Hover)
         html_hover = f"""<div style="font-family:'Segoe UI',sans-serif;width:200px;background-color:white;border-radius:8px;box-shadow:0 4px 15px rgba(0,0,0,0.2);overflow:hidden;border:1px solid #f0f0f0;">
         <div style="background-color:{warna_zona};color:white;padding:10px 12px;font-size:14px;font-weight:bold;">{kota_nm.upper()}</div>
         <div style="padding:12px;color:#444;font-size:13px;">
@@ -212,7 +210,6 @@ if df is not None:
         feature['properties']['fillColor'] = warna_zona
         feature['properties']['isi_tooltip'] = html_hover
 
-    # 2. FUNGSI STYLE (Highlight jika dipilih)
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
         base = feature['properties']['fillColor']
@@ -220,7 +217,6 @@ if df is not None:
             return {'fillColor': base, 'color': 'cyan', 'weight': 4, 'fillOpacity': 0.9, 'opacity': 1}
         return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
 
-    # 3. RENDER PETA
     st.title("Peta Persebaran Risiko HIV Jawa Barat")
     
     st.markdown('''
@@ -244,18 +240,15 @@ if df is not None:
 
     map_data = st_folium(m, width="100%", height=550)
 
-    # --- LOGIKA KLIK PETA (UPDATE STATE) ---
     if map_data and map_data.get('last_active_drawing'):
         props = map_data['last_active_drawing'].get('properties', {})
         clicked_name = props.get('name', '').title()
-        
-        # Jika klik kota baru, update state & rerun (Dropdown otomatis hilang karena state berubah)
         if clicked_name and clicked_name != st.session_state.selected_city:
             st.session_state.selected_city = clicked_name
             st.rerun()
 
     # ==========================================
-    # 6. HTML LAPORAN
+    # 6. HTML LAPORAN (Updated Styling)
     # ==========================================
     if kt == 'SEMUA KAB/KOTA':
         judul_lap = "JAWA BARAT (PROVINSI)"
@@ -279,16 +272,40 @@ if df is not None:
         html_rekomendasi += f"<li style='margin-bottom:8px;'>{rec}</li>"
     html_rekomendasi += "</ul>"
 
-    html_table = f"""<table style="width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px; margin-top:10px; color:#333;">
-    <tr style="background-color: #f1f2f6; color: #333;">
-    <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">KELOMPOK USIA</th>
-    <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">JUMLAH KASUS</th></tr>
-    <tr><td style="border: 1px solid #ddd; padding: 8px;">Anak-anak</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val.get('Anak-anak',0):,.0f}</td></tr>
-    <tr><td style="border: 1px solid #ddd; padding: 8px;">Remaja</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val.get('Remaja',0):,.0f}</td></tr>
-    <tr><td style="border: 1px solid #ddd; padding: 8px;">Dewasa</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val.get('Dewasa',0):,.0f}</td></tr>
-    <tr><td style="border: 1px solid #ddd; padding: 8px;">Lansia</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{det_val.get('Lansia',0):,.0f}</td></tr>
-    </table>"""
+    # --- HTML TABLE YANG DIUPDATE AGAR SIMETRIS ---
+    # Menggunakan styling yang lebih bersih dan modern mirip screenshot
+    html_table = f"""
+    <div style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin-top:10px;">
+        <table style="width:100%; border-collapse: collapse; font-family: 'Segoe UI', sans-serif; font-size: 14px;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="text-align: left; padding: 12px 15px; color: #555; font-weight: 600; border-bottom: 1px solid #e0e0e0;">KELOMPOK USIA</th>
+                    <th style="text-align: right; padding: 12px 15px; color: #555; font-weight: 600; border-bottom: 1px solid #e0e0e0;">JUMLAH KASUS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #f0f0f0; color:#333;">Anak-anak</td>
+                    <td style="padding: 10px 15px; text-align: right; border-bottom: 1px solid #f0f0f0; font-weight:bold; color:#333;">{det_val.get('Anak-anak',0):,.0f}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #f0f0f0; color:#333;">Remaja</td>
+                    <td style="padding: 10px 15px; text-align: right; border-bottom: 1px solid #f0f0f0; font-weight:bold; color:#333;">{det_val.get('Remaja',0):,.0f}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; border-bottom: 1px solid #f0f0f0; color:#333;">Dewasa</td>
+                    <td style="padding: 10px 15px; text-align: right; border-bottom: 1px solid #f0f0f0; font-weight:bold; color:#333;">{det_val.get('Dewasa',0):,.0f}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 15px; color:#333;">Lansia</td>
+                    <td style="padding: 10px 15px; text-align: right; font-weight:bold; color:#333;">{det_val.get('Lansia',0):,.0f}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    """
 
+    # Top 5 Table (Jika Provinsi)
     html_top5 = "" 
     if kt == 'SEMUA KAB/KOTA':
         top5 = df_grp.sort_values(ascending=False).head(5)
@@ -299,21 +316,55 @@ if df is not None:
             rows += f"<tr><td style='padding:5px; border-bottom:1px solid #eee;'>{c}</td><td style='padding:5px; text-align:right; border-bottom:1px solid #eee;'><b>{v}</b></td><td style='padding:5px; width:40%; border-bottom:1px solid #eee;'><div style='background:#3498db; width:{pct}%; height:8px; border-radius:4px;'></div></td></tr>"
         html_top5 = f"<div style='margin-top:20px; border:1px solid #ddd; padding:10px; border-radius:5px;'><b style='color:#555;'>🏆 5 WILAYAH TERTINGGI</b><table style='width:100%; font-size:12px; margin-top:5px; border-collapse:collapse; color:#333;'>{rows}</table></div>"
 
-    final_html = f"""<div style="font-family: Arial, sans-serif; color:#333; background-color:white; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10px;">
-    <div style="background-color: {warna_header}; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-    <div><h3 style="margin:0;">📊 LAPORAN: {judul_lap}</h3><div style="font-size:13px; margin-top:5px; opacity:0.9;">FILTER GENDER: <b>{jk}</b></div></div>
-    <div style="text-align:right;"><div style="font-size:11px; text-transform:uppercase; opacity:0.8;">STATUS RISIKO</div>
-    <div style="font-size:18px; font-weight:bold;">{zona_stats.get('lbl')}</div>
-    <div style="font-size:11px;">{zona_stats.get('desc')}</div></div></div>
-    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.3); margin:10px 0;">
-    <div style="font-size:14px;">TOTAL KASUS: <b style="font-size:16px;">{tot_val:,.0f}</b> ORANG</div></div>
-    <div style="border: 1px solid #ddd; border-top:none; padding: 20px; border-radius: 0 0 8px 8px; background-color:white;">
-    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-    <div style="flex: 1; min-width: 250px;"><b style="color:#555; display:block; border-bottom:2px solid #eee; padding-bottom:5px;">📋 DATA DEMOGRAFI</b>{html_table}{html_top5}</div>
-    <div style="flex: 1; min-width: 250px;"><div style="background-color: #fff8e1; border-left: 5px solid #f1c40f; padding: 15px; border-radius: 4px;">
-    <b style="color:#d35400; display:block; margin-bottom:10px;">💡 REKOMENDASI KEBIJAKAN</b>
-    <div style="font-size: 13px; line-height: 1.5; color:#333;">{html_rekomendasi}</div></div></div></div></div></div>"""
+    # HTML FINAL (LAYOUT FLEX DENGAN RASIO SEIMBANG)
+    final_html = f"""
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; color:#333; background-color:white; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10px;">
+        
+        <div style="background-color: {warna_header}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin:0; font-size:24px;">📊 LAPORAN: {judul_lap}</h2>
+                    <div style="font-size:14px; margin-top:5px; opacity:0.9;">FILTER GENDER: <b>{jk}</b></div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:12px; text-transform:uppercase; opacity:0.9; letter-spacing:1px;">STATUS RISIKO</div>
+                    <div style="font-size:22px; font-weight:bold; margin:2px 0;">{zona_stats.get('lbl')}</div>
+                    <div style="font-size:13px;">{zona_stats.get('desc')}</div>
+                </div>
+            </div>
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.3); margin:15px 0;">
+            <div style="font-size:15px;">TOTAL KASUS TERDATA: <b style="font-size:18px;">{tot_val:,.0f}</b> ORANG</div>
+        </div>
+
+        <div style="border: 1px solid #ddd; border-top:none; padding: 25px; border-radius: 0 0 8px 8px; background-color:white;">
+            
+            <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                
+                <div style="flex: 1; min-width: 300px;">
+                    <div style="display:flex; align-items:center; margin-bottom:10px;">
+                        <span style="font-size:18px; margin-right:8px;">📋</span>
+                        <b style="color:#555; font-size:16px;">DATA DEMOGRAFI</b>
+                    </div>
+                    {html_table}
+                    {html_top5}
+                </div>
+
+                <div style="flex: 1; min-width: 300px;">
+                    <div style="background-color: #fff8e1; border-left: 5px solid #f1c40f; padding: 20px; border-radius: 6px; height: 100%; box-sizing: border-box;">
+                        <div style="display:flex; align-items:center; margin-bottom:15px;">
+                            <span style="font-size:18px; margin-right:8px;">💡</span>
+                            <b style="color:#d35400; font-size:16px;">REKOMENDASI KEBIJAKAN</b>
+                        </div>
+                        <div style="font-size: 14px; line-height: 1.6; color:#333;">
+                            {html_rekomendasi}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    """
 
     st.markdown(final_html, unsafe_allow_html=True)
 
