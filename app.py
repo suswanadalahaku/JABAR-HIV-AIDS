@@ -244,7 +244,7 @@ if df is not None:
         display: inline-block;
         box-shadow: 0 2px 5px rgba(0,0,0,0.08);
     ">
-        <span style="display:inline-block; vertical-align:middle;">ZONA RISIKO (AI)</span> &nbsp;&nbsp;&nbsp;
+        <span style="display:inline-block; vertical-align:middle;">ZONA RISIKO</span> &nbsp;&nbsp;&nbsp;
         <span style="color:#e74c3c;">■</span> <span style="font-weight:normal;">Merah (Bahaya)</span> &nbsp;&nbsp;
         <span style="color:#f1c40f;">■</span> <span style="font-weight:normal;">Kuning (Waspada)</span> &nbsp;&nbsp;
         <span style="color:#2ecc71;">■</span> <span style="font-weight:normal;">Hijau (Risiko Rendah)</span>
