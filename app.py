@@ -142,30 +142,30 @@ if df is not None:
     
     opt_kt = ['SEMUA KAB/KOTA'] + sorted(df['nama_kabupaten_kota'].unique())
     
-    # --- PERBAIKAN 1: Inisialisasi State Penampung (Proxy) ---
+    # --- PERBAIKAN: INISIALISASI STATE UTAMA ('target_kota') ---
     if 'target_kota' not in st.session_state:
         st.session_state.target_kota = 'SEMUA KAB/KOTA'
 
-    # Fungsi callback: Jika user ganti lewat Sidebar, update state penampung
-    def update_dari_sidebar():
+    # Fungsi Callback: Sinkronisasi Sidebar -> State
+    def update_filter():
         st.session_state.target_kota = st.session_state.widget_kt
 
-    # Hitung index untuk default value selectbox
+    # Tentukan index awal berdasarkan state
     try:
-        index_pilihan = opt_kt.index(st.session_state.target_kota)
+        idx_awal = opt_kt.index(st.session_state.target_kota)
     except ValueError:
-        index_pilihan = 0
+        idx_awal = 0
 
-    # Render Selectbox dengan key BERBEDA ('widget_kt')
+    # Render Selectbox dengan key unik ('widget_kt')
     st.sidebar.selectbox(
         "📍 Kabupaten/Kota:", 
         opt_kt, 
-        index=index_pilihan,
-        key='widget_kt',
-        on_change=update_dari_sidebar
+        index=idx_awal,
+        key='widget_kt',  # Key khusus widget
+        on_change=update_filter # Panggil fungsi saat berubah
     )
     
-    # Variabel utama 'kt' mengambil dari state penampung
+    # Variabel utama logika mengambil dari STATE, bukan widget
     kt = st.session_state.target_kota
 
     # --- FILTER DATA ---
@@ -192,6 +192,7 @@ if df is not None:
         risk_info = labels_data.get(kota, {'lbl':'N/A', 'desc':''})
         warna_zona = colors.get(kota, '#95a5a6')
         
+        # Ambil detail data
         if kota in df_det.index:
             d_anak = df_det.loc[kota, 'Anak-anak']
             d_remaja = df_det.loc[kota, 'Remaja']
@@ -200,6 +201,7 @@ if df is not None:
         else:
             d_anak = 0; d_remaja = 0; d_dewasa = 0; d_lansia = 0
         
+        # HTML Tooltip & Popup
         html_hover = f"""
         <div style="font-family: 'Segoe UI', sans-serif; width: 200px; background-color: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow: hidden; border: 1px solid #f0f0f0; margin-bottom: 5px;">
             <div style="background-color: {warna_zona}; color: white; padding: 10px 12px; font-size: 14px; font-weight: bold;">{kota.upper()}</div>
@@ -230,11 +232,13 @@ if df is not None:
         feature['properties']['isi_popup'] = html_popup_detail 
         feature['properties']['isi_tooltip'] = html_hover      
 
+    # --- FUNGSI STYLE (PERBAIKAN KEY ERROR DISINI) ---
     def style_function_dynamic(feature):
         kota_name = feature['properties']['name'].title()
         base = feature['properties']['fillColor']
-        # Gunakan st.session_state.selected_kt untuk highlight
-        if st.session_state.selected_kt != 'SEMUA KAB/KOTA' and kota_name.upper() == st.session_state.selected_kt.upper():
+        
+        # PERBAIKAN: Gunakan 'target_kota' yang sudah pasti ada
+        if st.session_state.target_kota != 'SEMUA KAB/KOTA' and kota_name.upper() == st.session_state.target_kota.upper():
             return {'fillColor': base, 'color': 'cyan', 'weight': 4, 'fillOpacity': 0.9, 'opacity': 1}
         return {'fillColor': base, 'color': 'white', 'weight': 1, 'fillOpacity': 0.7, 'opacity': 1}
 
@@ -242,6 +246,7 @@ if df is not None:
     m = folium.Map(location=[-6.9175, 107.6191], zoom_start=9, min_zoom=8, max_zoom=10, max_bounds=True, tiles='CartoDB positron')
     m.fit_bounds([sw, ne])
 
+    # Render GeoJSON ke Folium Map
     folium.GeoJson(
         geo_current, 
         style_function=style_function_dynamic, 
@@ -250,7 +255,7 @@ if df is not None:
     ).add_to(m)
 
     # ==========================================
-    # 6. HTML LAPORAN & RENDER PETA (DENGAN CLICK EVENT)
+    # 6. RENDER PETA & HTML LAPORAN
     # ==========================================
     
     # 1. Judul & Legend
@@ -267,18 +272,17 @@ if df is not None:
     # 2. Render Peta & Tangkap Click
     map_data = st_folium(m, width="100%", height=550)
 
-    # 3. Logika Update Filter saat Klik Peta
+    # 3. Logika Update Filter saat Klik Peta (PERBAIKAN LOGIKA)
     if map_data and map_data.get('last_active_drawing'):
         properties = map_data['last_active_drawing'].get('properties', {})
         clicked_name = properties.get('name', '').title()
         
-        # Validasi: Cek apakah nama kota ada di opsi DAN beda dengan yang sekarang
+        # Validasi: Cek apakah nama kota ada di opsi DAN beda dengan state target_kota
         if clicked_name in opt_kt and clicked_name != st.session_state.target_kota:
-            # PERBAIKAN 2: Update state penampung, BUKAN key widget langsung
             st.session_state.target_kota = clicked_name
             st.rerun()
 
-    # --- PERSIAPAN HTML LAPORAN (SAMA SEPERTI SEBELUMNYA) ---
+    # --- PERSIAPAN HTML LAPORAN ---
     if kt == 'SEMUA KAB/KOTA':
         judul_lap = "JAWA BARAT (PROVINSI)"
         prov_status = calculate_province_status(df_f, city_scores)
