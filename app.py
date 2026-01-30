@@ -21,7 +21,7 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     # GANTI PATH INI SESUAI LOKASI FILE ANDA
-    df = pd.read_csv("jabar-hiv-aids/odhiv_jabar_2022_clean.csv") 
+    df = pd.read_csv("jumlah_kasus_hiv_berdasarkan_kelompok_umur_v1_data.csv") 
     
     # Pastikan kolom sesuai
     if 'nama_kabupaten_kota' not in df.columns:
@@ -57,7 +57,7 @@ def load_data():
 @st.cache_data
 def load_geojson():
     # GANTI PATH INI SESUAI LOKASI FILE ANDA
-    with open("jabar-hiv-aids/geo_jabar.json", "r") as f:
+    with open("jawa_barat_32_batas_kabkota.geojson", "r") as f:
         return json.load(f)
 
 # Load Data
