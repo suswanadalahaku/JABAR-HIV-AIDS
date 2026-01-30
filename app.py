@@ -232,21 +232,22 @@ if df is not None:
     
     st.markdown('''
     <div style="
-        font-family: sans-serif; 
+        font-family: 'Segoe UI', sans-serif; 
         font-size: 14px; 
         margin-bottom: 10px; 
         font-weight: bold;
         background-color: #ffffff;
-        padding: 10px 15px;
-        border-radius: 6px;
-        border: 1px solid #ddd;
+        color: #333333; 
+        padding: 12px 20px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
         display: inline-block;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
     ">
-        ZONA RISIKO &nbsp;&nbsp;&nbsp;
-        <span style="color:#e74c3c;">■</span> Merah (Bahaya) &nbsp;&nbsp;
-        <span style="color:#f1c40f;">■</span> Kuning (Waspada) &nbsp;&nbsp;
-        <span style="color:#2ecc71;">■</span> Hijau (Risiko Rendah)
+        <span style="display:inline-block; vertical-align:middle;">ZONA RISIKO (AI)</span> &nbsp;&nbsp;&nbsp;
+        <span style="color:#e74c3c;">■</span> <span style="font-weight:normal;">Merah (Bahaya)</span> &nbsp;&nbsp;
+        <span style="color:#f1c40f;">■</span> <span style="font-weight:normal;">Kuning (Waspada)</span> &nbsp;&nbsp;
+        <span style="color:#2ecc71;">■</span> <span style="font-weight:normal;">Hijau (Risiko Rendah)</span>
     </div>
     ''', unsafe_allow_html=True)
 
